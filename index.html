@@ -1,0 +1,1759 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#0f1117">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>Formator</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:       #0f1117;
+      --bg2:      #181c27;
+      --bg3:      #1e2333;
+      --border:   #2a3045;
+      --text:     #d4d8e8;
+      --text2:    #8a90aa;
+      --accent:   #4f7ef8;
+      --accent2:  #6b9bff;
+      --green:    #34d399;
+      --red:      #f87171;
+      --yellow:   #fbbf24;
+      --radius:   8px;
+      --font:     -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+      --mono:     'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+    }
+
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font);
+      font-size: 14px;
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── Layout ── */
+    #app { display: flex; flex-direction: column; height: 100vh; }
+
+    header {
+      display: flex; align-items: center; gap: 12px;
+      padding: 0 20px; height: 52px;
+      background: var(--bg2); border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .logo { font-size: 16px; font-weight: 700; letter-spacing: -0.3px; }
+    .logo span { color: var(--accent); }
+    .header-tag {
+      font-size: 10px; letter-spacing: 0.5px; text-transform: uppercase;
+      color: var(--text2); background: var(--bg3); padding: 2px 7px;
+      border-radius: 4px; border: 1px solid var(--border);
+    }
+    .spacer { flex: 1; }
+    .btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 7px 14px; border-radius: var(--radius);
+      font-size: 13px; font-weight: 500; cursor: pointer;
+      border: 1px solid var(--border); background: var(--bg3);
+      color: var(--text); transition: all 0.15s; white-space: nowrap;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .btn:hover { background: var(--border); border-color: var(--accent); }
+    .btn.primary {
+      background: var(--accent); border-color: var(--accent); color: #fff;
+    }
+    .btn.primary:hover { background: var(--accent2); }
+    .btn:disabled { opacity: 0.4; pointer-events: none; }
+
+    /* ── Welcome screen ── */
+    #welcome {
+      flex: 1; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 32px;
+      padding: 32px 20px;
+    }
+    .welcome-title {
+      font-size: 28px; font-weight: 700; text-align: center;
+      letter-spacing: -0.5px;
+    }
+    .welcome-title span { color: var(--accent); }
+    .welcome-sub {
+      font-size: 15px; color: var(--text2); text-align: center;
+      max-width: 420px; line-height: 1.7;
+    }
+    .welcome-cards {
+      display: flex; flex-wrap: wrap; gap: 12px;
+      justify-content: center; max-width: 600px;
+    }
+    .welcome-card {
+      background: var(--bg2); border: 1px solid var(--border);
+      border-radius: 12px; padding: 20px; width: 180px;
+      display: flex; flex-direction: column; gap: 8px; cursor: pointer;
+      transition: border-color 0.15s;
+    }
+    .welcome-card:hover { border-color: var(--accent); }
+    .card-icon { font-size: 24px; }
+    .card-title { font-weight: 600; font-size: 14px; }
+    .card-desc { font-size: 12px; color: var(--text2); line-height: 1.5; }
+    .security-note {
+      display: flex; align-items: center; gap: 8px;
+      font-size: 12px; color: var(--green); opacity: 0.85;
+    }
+
+    /* ── Vault workspace ── */
+    #workspace {
+      display: none; flex: 1; flex-direction: column; overflow: hidden;
+    }
+    .vault-header {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 16px; background: var(--bg2);
+      border-bottom: 1px solid var(--border); flex-shrink: 0;
+    }
+    .vault-name { font-weight: 600; font-size: 13px; }
+    .vault-status {
+      font-size: 11px; padding: 2px 8px; border-radius: 10px;
+      background: rgba(52,211,153,0.15); color: var(--green);
+    }
+    .workspace-body {
+      display: flex; flex: 1; overflow: hidden;
+    }
+
+    /* ── File tree ── */
+    #sidebar {
+      width: 260px; min-width: 200px; flex-shrink: 0;
+      background: var(--bg2); border-right: 1px solid var(--border);
+      overflow-y: auto; overflow-x: hidden;
+    }
+    @media (max-width: 600px) {
+      #sidebar { width: 100%; }
+      #fileview { display: none; }
+      #sidebar.hidden { display: none; }
+      #fileview.visible { display: flex; }
+    }
+    .tree-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 10px 12px 6px;
+      font-size: 11px; text-transform: uppercase; letter-spacing: 0.8px;
+      color: var(--text2); font-weight: 600;
+    }
+    .tree-node {
+      display: flex; align-items: center; gap: 6px;
+      padding: 5px 12px; cursor: pointer; user-select: none;
+      border-radius: 0; transition: background 0.1s;
+      font-size: 13px;
+    }
+    .tree-node:hover { background: var(--bg3); }
+    .tree-node.selected { background: rgba(79,126,248,0.15); color: var(--accent); }
+    .tree-node .icon { flex-shrink: 0; font-size: 14px; }
+    .tree-node .name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .tree-node .arrow { font-size: 10px; color: var(--text2); transition: transform 0.15s; }
+    .tree-node.open .arrow { transform: rotate(90deg); }
+    .tree-children { display: none; }
+    .tree-children.open { display: block; }
+
+    /* ── File view ── */
+    #fileview {
+      flex: 1; overflow: hidden; display: flex; flex-direction: column;
+      background: var(--bg);
+    }
+    .fileview-empty {
+      flex: 1; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 12px;
+      color: var(--text2);
+    }
+    .fileview-empty .big { font-size: 40px; }
+    .file-info-panel {
+      padding: 24px; display: flex; flex-direction: column; gap: 16px;
+    }
+    .file-name-display {
+      font-size: 18px; font-weight: 600; word-break: break-all;
+    }
+    .file-meta { display: flex; flex-wrap: wrap; gap: 8px; }
+    .meta-chip {
+      font-size: 11px; padding: 3px 9px; border-radius: 6px;
+      background: var(--bg3); color: var(--text2); border: 1px solid var(--border);
+    }
+    .action-row { display: flex; gap: 8px; flex-wrap: wrap; }
+    .file-preview {
+      flex: 1; margin: 0 24px 24px; border-radius: var(--radius);
+      background: var(--bg2); border: 1px solid var(--border);
+      overflow: auto; position: relative;
+    }
+    .text-preview {
+      padding: 16px; font-family: var(--mono); font-size: 12px;
+      white-space: pre-wrap; word-break: break-all; color: var(--text);
+    }
+    .image-preview {
+      display: flex; align-items: center; justify-content: center;
+      padding: 24px; min-height: 200px;
+    }
+    .image-preview img { max-width: 100%; max-height: 60vh; border-radius: 4px; }
+
+    /* ── Modal ── */
+    .modal-backdrop {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.7);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 100; padding: 20px;
+      backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
+    }
+    .modal-backdrop.hidden { display: none; }
+    .modal {
+      background: var(--bg2); border: 1px solid var(--border);
+      border-radius: 14px; padding: 28px; width: 100%; max-width: 400px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+    }
+    .modal h2 { font-size: 18px; font-weight: 700; margin-bottom: 6px; }
+    .modal p { color: var(--text2); font-size: 13px; margin-bottom: 20px; line-height: 1.6; }
+    .input-field {
+      width: 100%; padding: 11px 14px; font-size: 15px;
+      background: var(--bg3); border: 1px solid var(--border);
+      border-radius: var(--radius); color: var(--text);
+      outline: none; -webkit-appearance: none;
+      transition: border-color 0.15s;
+    }
+    .input-field:focus { border-color: var(--accent); }
+    .modal-actions { display: flex; gap: 8px; margin-top: 16px; justify-content: flex-end; }
+    .error-msg {
+      color: var(--red); font-size: 12px; margin-top: 8px; display: none;
+    }
+
+    /* ── Upload drop zone ── */
+    .dropzone {
+      border: 2px dashed var(--border); border-radius: 10px;
+      padding: 32px; text-align: center; cursor: pointer;
+      transition: border-color 0.15s, background 0.15s;
+    }
+    .dropzone:hover, .dropzone.drag { border-color: var(--accent); background: rgba(79,126,248,0.05); }
+    .dropzone .dz-icon { font-size: 36px; margin-bottom: 10px; }
+    .dropzone .dz-title { font-weight: 600; margin-bottom: 4px; }
+    .dropzone .dz-sub { font-size: 12px; color: var(--text2); }
+
+    /* ── Progress ── */
+    .progress-bar {
+      width: 100%; height: 4px; background: var(--bg3);
+      border-radius: 2px; overflow: hidden; margin-top: 12px;
+    }
+    .progress-fill {
+      height: 100%; background: var(--accent);
+      border-radius: 2px; transition: width 0.2s;
+    }
+    .status-text { font-size: 12px; color: var(--text2); margin-top: 6px; }
+
+    /* ── Toast ── */
+    #toast {
+      position: fixed; bottom: 24px; right: 24px;
+      background: var(--bg3); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 12px 16px;
+      font-size: 13px; z-index: 200; transform: translateY(80px);
+      transition: transform 0.25s; max-width: 300px;
+    }
+    #toast.show { transform: translateY(0); }
+    #toast.err { border-color: var(--red); color: var(--red); }
+    #toast.ok { border-color: var(--green); color: var(--green); }
+
+    /* ── Breadcrumb ── */
+    .breadcrumb {
+      display: flex; align-items: center; gap: 4px; flex-wrap: wrap;
+      padding: 8px 16px; border-bottom: 1px solid var(--border);
+      font-size: 12px; color: var(--text2); flex-shrink: 0;
+      background: var(--bg2);
+    }
+    .breadcrumb span { cursor: pointer; }
+    .breadcrumb span:hover { color: var(--accent); }
+    .bc-sep { opacity: 0.4; }
+
+    /* ── New vault wizard ── */
+    .wizard-steps { display: flex; gap: 0; margin-bottom: 24px; }
+    .wizard-step {
+      flex: 1; text-align: center; font-size: 11px; padding: 8px 4px;
+      border-bottom: 2px solid var(--border); color: var(--text2);
+    }
+    .wizard-step.active { border-color: var(--accent); color: var(--accent); font-weight: 600; }
+    .wizard-step.done { border-color: var(--green); color: var(--green); }
+
+    /* ── Proton Drive panel ── */
+    .pd-section { margin-bottom: 16px; }
+    .pd-label { font-size: 12px; color: var(--text2); margin-bottom: 6px; }
+    .pd-info {
+      background: rgba(79,126,248,0.08); border: 1px solid rgba(79,126,248,0.2);
+      border-radius: 8px; padding: 12px; font-size: 12px; line-height: 1.7;
+    }
+    .pd-info a { color: var(--accent); text-decoration: none; }
+
+    /* ── Scrollbar ── */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+    /* ── Responsive ── */
+    @media (max-width: 480px) {
+      header { padding: 0 14px; }
+      .welcome-title { font-size: 22px; }
+      .welcome-card { width: 140px; padding: 16px; }
+      .modal { padding: 20px; }
+    }
+  </style>
+</head>
+<body>
+<div id="app">
+
+  <!-- Header -->
+  <header>
+    <div class="logo">Form<span>ator</span></div>
+    <div class="header-tag">Local · Private · No server</div>
+    <div class="spacer"></div>
+    <button class="btn" id="btnNewVault" onclick="showNewVault()">+ New vault</button>
+    <button class="btn primary" id="btnOpen" onclick="openVault()">Open vault</button>
+  </header>
+
+  <!-- Welcome -->
+  <div id="welcome">
+    <div>
+      <div class="welcome-title">Cryptomator in your <span>browser</span></div>
+      <div style="height:10px"></div>
+      <div class="welcome-sub">
+        Open, browse and edit Cryptomator vaults — locally, without installing anything.
+        Works with Proton Drive, local folders and any storage.
+      </div>
+    </div>
+    <div class="welcome-cards">
+      <div class="welcome-card" onclick="openVault()">
+        <div class="card-icon">📂</div>
+        <div class="card-title">Open vault</div>
+        <div class="card-desc">From your device, Proton Drive or any folder</div>
+      </div>
+      <div class="welcome-card" onclick="showNewVault()">
+        <div class="card-icon">🔒</div>
+        <div class="card-title">New vault</div>
+        <div class="card-desc">Create a Cryptomator vault with a password</div>
+      </div>
+      <div class="welcome-card" onclick="showProtonConnect()">
+        <div class="card-icon">☁️</div>
+        <div class="card-title">Proton Drive</div>
+        <div class="card-desc">Connect via iOS Files or session token</div>
+      </div>
+    </div>
+    <div class="security-note">
+      <span>🛡</span>
+      All encryption happens locally in your browser. Nothing leaves your device.
+    </div>
+  </div>
+
+  <!-- Workspace -->
+  <div id="workspace">
+    <div class="vault-header">
+      <button class="btn" onclick="closeVault()" style="padding:5px 10px">← Back</button>
+      <div class="vault-name" id="vaultName">Vault</div>
+      <div class="vault-status" id="vaultStatus">Unlocked</div>
+      <div class="spacer"></div>
+      <button class="btn" onclick="showUpload()">Upload file</button>
+    </div>
+    <div class="breadcrumb" id="breadcrumb"></div>
+    <div class="workspace-body">
+      <div id="sidebar">
+        <div class="tree-header">
+          <span>Files</span>
+          <span id="fileCount" style="font-weight:400"></span>
+        </div>
+        <div id="fileTree"></div>
+      </div>
+      <div id="fileview">
+        <div class="fileview-empty" id="fileviewEmpty">
+          <div class="big">🔓</div>
+          <div>Select a file to decrypt and view</div>
+        </div>
+        <div id="fileviewContent" style="display:none; flex:1; flex-direction:column; overflow:hidden;">
+          <div class="file-info-panel">
+            <div class="file-name-display" id="selectedFileName"></div>
+            <div class="file-meta" id="fileMeta"></div>
+            <div class="action-row">
+              <button class="btn primary" id="btnDownload" onclick="downloadSelected()">⬇ Download</button>
+              <button class="btn" id="btnDelete" onclick="deleteSelected()">🗑 Delete</button>
+            </div>
+          </div>
+          <div class="file-preview" id="filePreview"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ── Modals ── -->
+
+<!-- Password modal -->
+<div class="modal-backdrop hidden" id="pwModal">
+  <div class="modal">
+    <h2>Unlock vault</h2>
+    <p id="pwModalDesc">Enter the password for this vault. It is never sent anywhere.</p>
+    <input class="input-field" type="password" id="pwInput" placeholder="Password"
+           autocomplete="current-password" autocorrect="off" spellcheck="false">
+    <div class="error-msg" id="pwError">Wrong password. Try again.</div>
+    <div class="progress-bar" id="pwProgress" style="display:none">
+      <div class="progress-fill" id="pwFill" style="width:0%"></div>
+    </div>
+    <div class="status-text" id="pwStatus"></div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closePwModal()">Cancel</button>
+      <button class="btn primary" id="btnUnlock" onclick="unlockVault()">Unlock</button>
+    </div>
+  </div>
+</div>
+
+<!-- New vault modal -->
+<div class="modal-backdrop hidden" id="newVaultModal">
+  <div class="modal" style="max-width:460px">
+    <h2>Create new vault</h2>
+    <div class="wizard-steps">
+      <div class="wizard-step active" id="ws1">1. Password</div>
+      <div class="wizard-step" id="ws2">2. Location</div>
+      <div class="wizard-step" id="ws3">3. Done</div>
+    </div>
+    <div id="nv-step1">
+      <p>Choose a strong password. It cannot be recovered if lost.</p>
+      <input class="input-field" type="password" id="nvPw1" placeholder="Password"
+             autocomplete="new-password" style="margin-bottom:8px">
+      <input class="input-field" type="password" id="nvPw2" placeholder="Confirm password"
+             autocomplete="new-password">
+      <div class="error-msg" id="nvError"></div>
+      <div class="modal-actions">
+        <button class="btn" onclick="closeNewVault()">Cancel</button>
+        <button class="btn primary" onclick="nvStep2()">Next →</button>
+      </div>
+    </div>
+    <div id="nv-step2" style="display:none">
+      <p>Where do you want to save the vault? A folder will be created with the vault structure.</p>
+      <div class="dropzone" id="nvDropzone" onclick="nvPickLocation()">
+        <div class="dz-icon">📁</div>
+        <div class="dz-title">Choose save location</div>
+        <div class="dz-sub" id="nvLocDesc">Click to select folder (or we'll download a zip)</div>
+      </div>
+      <div class="modal-actions" style="margin-top:16px">
+        <button class="btn" onclick="nvBack()">← Back</button>
+        <button class="btn primary" onclick="nvCreate()">Create vault</button>
+      </div>
+    </div>
+    <div id="nv-step3" style="display:none">
+      <p style="color:var(--green)">
+        ✓ Vault created successfully! Download the vault files and keep them safe.
+      </p>
+      <div class="modal-actions">
+        <button class="btn primary" onclick="closeNewVault()">Done</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Proton Drive modal -->
+<div class="modal-backdrop hidden" id="pdModal">
+  <div class="modal" style="max-width:460px">
+    <h2>☁️ Proton Drive</h2>
+    <p>Connect your Proton Drive to access Cryptomator vaults stored there.</p>
+
+    <div class="pd-section">
+      <div class="pd-label">Option 1 — iPhone / iPad (recommended)</div>
+      <div class="pd-info">
+        Proton Drive is integrated into the iOS <strong>Files app</strong>.<br>
+        Tap <strong>"Open vault"</strong> → browse to <strong>Proton Drive</strong> in Files
+        → select your vault folder. Everything decrypts locally.
+      </div>
+    </div>
+
+    <div class="pd-section" style="margin-top:14px">
+      <div class="pd-label">Option 2 — Desktop (Chrome / Edge)</div>
+      <div class="pd-info">
+        1. Open <a href="https://drive.proton.me" target="_blank">drive.proton.me</a><br>
+        2. Download your vault folder as a zip<br>
+        3. Extract it, then use <strong>"Open vault"</strong> to select the folder
+      </div>
+    </div>
+
+    <div class="pd-section" style="margin-top:14px">
+      <div class="pd-label">Option 3 — Direct API (advanced)</div>
+      <div class="pd-info">
+        Paste your Proton session UID + Access Token from browser DevTools
+        → <a href="#" onclick="showPdToken()">Configure token access</a>
+      </div>
+    </div>
+
+    <div class="modal-actions" style="margin-top:16px">
+      <button class="btn" onclick="closePdModal()">Close</button>
+      <button class="btn primary" onclick="openVault(); closePdModal()">Open vault folder</button>
+    </div>
+  </div>
+</div>
+
+<!-- Upload modal -->
+<div class="modal-backdrop hidden" id="uploadModal">
+  <div class="modal">
+    <h2>Upload & encrypt file</h2>
+    <p>File will be encrypted and added to the current vault directory.</p>
+    <div class="dropzone" id="uploadDropzone">
+      <div class="dz-icon">📄</div>
+      <div class="dz-title" id="uploadDropTitle">Drop file here or tap to select</div>
+      <div class="dz-sub">File is encrypted locally before storing</div>
+    </div>
+    <input type="file" id="uploadFileInput" style="display:none" multiple>
+    <div class="progress-bar" id="uploadProgress" style="display:none; margin-top:12px">
+      <div class="progress-fill" id="uploadFill" style="width:0%"></div>
+    </div>
+    <div class="status-text" id="uploadStatus"></div>
+    <div class="modal-actions" style="margin-top:16px">
+      <button class="btn" onclick="closeUpload()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div id="toast"></div>
+
+<!-- Hidden file inputs -->
+<input type="file" id="vaultFolderInput" style="display:none" webkitdirectory multiple accept="">
+<input type="file" id="vaultFileInput" style="display:none" multiple accept="">
+
+<script>
+'use strict';
+
+// ═══════════════════════════════════════════════════════════════
+// SECTION 1 — UTILITIES
+// ═══════════════════════════════════════════════════════════════
+
+const enc = new TextEncoder();
+const dec = new TextDecoder();
+
+function b64decode(str) {
+  // Standard base64 → Uint8Array
+  const bin = atob(str.replace(/-/g,'+').replace(/_/g,'/'));
+  const out = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out;
+}
+
+function b64encode(buf) {
+  const bytes = new Uint8Array(buf);
+  let s = '';
+  for (let i = 0; i < bytes.length; i++) s += String.fromCharCode(bytes[i]);
+  return btoa(s);
+}
+
+function b64urlDecode(str) {
+  // Base64url → Uint8Array (no padding required)
+  str = str.replace(/-/g, '+').replace(/_/g, '/');
+  while (str.length % 4) str += '=';
+  return b64decode(str);
+}
+
+function b64urlEncode(buf) {
+  return b64encode(buf).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+}
+
+function hexEncode(buf) {
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+// Base32 encode (RFC 4648, uppercase, no padding)
+const B32_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+function base32encode(buf) {
+  const bytes = new Uint8Array(buf);
+  let result = '';
+  let bits = 0, val = 0;
+  for (let i = 0; i < bytes.length; i++) {
+    val = (val << 8) | bytes[i];
+    bits += 8;
+    while (bits >= 5) {
+      bits -= 5;
+      result += B32_CHARS[(val >>> bits) & 0x1f];
+    }
+  }
+  if (bits > 0) result += B32_CHARS[(val << (5 - bits)) & 0x1f];
+  return result;
+}
+
+function xorBytes(a, b) {
+  // XOR two Uint8Arrays, returns new Uint8Array of length Math.min(a,b)
+  const out = new Uint8Array(Math.min(a.length, b.length));
+  for (let i = 0; i < out.length; i++) out[i] = a[i] ^ b[i];
+  return out;
+}
+
+function xorInPlace(dst, src) {
+  for (let i = 0; i < dst.length && i < src.length; i++) dst[i] ^= src[i];
+}
+
+function xorEnd(dst, src) {
+  // XOR src (16 bytes) with last 16 bytes of dst
+  const off = dst.length - 16;
+  for (let i = 0; i < 16; i++) dst[off + i] ^= src[i];
+}
+
+function bytesEqual(a, b) {
+  if (a.length !== b.length) return false;
+  let d = 0;
+  for (let i = 0; i < a.length; i++) d |= a[i] ^ b[i];
+  return d === 0;
+}
+
+function formatSize(bytes) {
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+  return (bytes / 1048576).toFixed(2) + ' MB';
+}
+
+// ═══════════════════════════════════════════════════════════════
+// SECTION 2 — SCRYPT (RFC 7914)
+// Direct translation of Cryptomator's reference Java implementation
+// ═══════════════════════════════════════════════════════════════
+
+function scryptSalsa20_8(B) {
+  // B: Uint8Array of 64 bytes, modified in place
+  // Parse as 16 little-endian uint32
+  const B32 = new Int32Array(16);
+  for (let i = 0; i < 16; i++) {
+    B32[i] = (B[i*4]     & 0xff)       |
+             ((B[i*4+1] & 0xff) << 8)  |
+             ((B[i*4+2] & 0xff) << 16) |
+             ((B[i*4+3] & 0xff) << 24);
+  }
+  const x = new Int32Array(B32);
+
+  function r(a, b) { return (a << b) | (a >>> (32 - b)); }
+
+  for (let i = 8; i > 0; i -= 2) {
+    x[ 4] ^= r(x[ 0]+x[12], 7);  x[ 8] ^= r(x[ 4]+x[ 0], 9);
+    x[12] ^= r(x[ 8]+x[ 4],13);  x[ 0] ^= r(x[12]+x[ 8],18);
+    x[ 9] ^= r(x[ 5]+x[ 1], 7);  x[13] ^= r(x[ 9]+x[ 5], 9);
+    x[ 1] ^= r(x[13]+x[ 9],13);  x[ 5] ^= r(x[ 1]+x[13],18);
+    x[14] ^= r(x[10]+x[ 6], 7);  x[ 2] ^= r(x[14]+x[10], 9);
+    x[ 6] ^= r(x[ 2]+x[14],13);  x[10] ^= r(x[ 6]+x[ 2],18);
+    x[ 3] ^= r(x[15]+x[11], 7);  x[ 7] ^= r(x[ 3]+x[15], 9);
+    x[11] ^= r(x[ 7]+x[ 3],13);  x[15] ^= r(x[11]+x[ 7],18);
+    x[ 1] ^= r(x[ 0]+x[ 3], 7);  x[ 2] ^= r(x[ 1]+x[ 0], 9);
+    x[ 3] ^= r(x[ 2]+x[ 1],13);  x[ 0] ^= r(x[ 3]+x[ 2],18);
+    x[ 6] ^= r(x[ 5]+x[ 4], 7);  x[ 7] ^= r(x[ 6]+x[ 5], 9);
+    x[ 4] ^= r(x[ 7]+x[ 6],13);  x[ 5] ^= r(x[ 4]+x[ 7],18);
+    x[11] ^= r(x[10]+x[ 9], 7);  x[ 8] ^= r(x[11]+x[10], 9);
+    x[ 9] ^= r(x[ 8]+x[11],13);  x[10] ^= r(x[ 9]+x[ 8],18);
+    x[12] ^= r(x[15]+x[14], 7);  x[13] ^= r(x[12]+x[15], 9);
+    x[14] ^= r(x[13]+x[12],13);  x[15] ^= r(x[14]+x[13],18);
+  }
+
+  for (let i = 0; i < 16; i++) B32[i] = (x[i] + B32[i]) | 0;
+
+  for (let i = 0; i < 16; i++) {
+    B[i*4  ] = (B32[i]      ) & 0xff;
+    B[i*4+1] = (B32[i] >>  8) & 0xff;
+    B[i*4+2] = (B32[i] >> 16) & 0xff;
+    B[i*4+3] = (B32[i] >> 24) & 0xff;
+  }
+}
+
+function scryptBlockXor(S, Si, D, Di, len) {
+  for (let i = 0; i < len; i++) D[Di + i] ^= S[Si + i];
+}
+
+function scryptBlockmixSalsa8(BY, Bi, Yi, r) {
+  const X = BY.slice(Bi + (2*r - 1)*64, Bi + 2*r*64);
+  for (let i = 0; i < 2*r; i++) {
+    scryptBlockXor(BY, Bi + i*64, X, 0, 64);
+    scryptSalsa20_8(X);
+    BY.set(X, Yi + i*64);
+  }
+  for (let i = 0; i < r; i++) {
+    BY.set(BY.slice(Yi + i*2*64, Yi + (i*2+1)*64), Bi + i*64);
+  }
+  for (let i = 0; i < r; i++) {
+    BY.set(BY.slice(Yi + (i*2+1)*64, Yi + (i*2+2)*64), Bi + (i+r)*64);
+  }
+}
+
+function scryptIntegerify(B, Bi, r) {
+  const base = Bi + (2*r - 1)*64;
+  return ((B[base] & 0xff)) |
+         ((B[base+1] & 0xff) << 8) |
+         ((B[base+2] & 0xff) << 16) |
+         ((B[base+3] & 0xff) << 24);
+}
+
+function scryptSmix(B, Bi, r, N) {
+  const blockLen = 128 * r;
+  const V = new Uint8Array(blockLen * N);
+  const XY = new Uint8Array(blockLen * 2);
+  // Xi = 0 in XY, Yi = blockLen in XY
+  XY.set(B.slice(Bi, Bi + blockLen), 0);
+
+  for (let i = 0; i < N; i++) {
+    V.set(XY.slice(0, blockLen), i * blockLen);
+    scryptBlockmixSalsa8(XY, 0, blockLen, r);
+  }
+
+  for (let i = 0; i < N; i++) {
+    const j = (scryptIntegerify(XY, 0, r) & 0x7fffffff) % N;
+    scryptBlockXor(V, j * blockLen, XY, 0, blockLen);
+    scryptBlockmixSalsa8(XY, 0, blockLen, r);
+  }
+
+  B.set(XY.slice(0, blockLen), Bi);
+}
+
+// Main scrypt function — uses Web Crypto PBKDF2 for HMAC-SHA256,
+// pure JS for Salsa20/8 / BlockMix / ROMix.
+// Parameters match Cryptomator defaults: N=32768, r=8, p=1, dkLen=32
+async function scrypt(passwordBytes, saltBytes, N, r, p, dkLen) {
+  const subtle = crypto.subtle;
+  const blockLen = 128 * r;
+
+  // Step 1: B = PBKDF2-SHA256(password, salt, 1, p * 128r) bytes
+  const pwKey = await subtle.importKey('raw', passwordBytes, 'PBKDF2', false, ['deriveBits']);
+  const bBits = await subtle.deriveBits(
+    { name: 'PBKDF2', salt: saltBytes, iterations: 1, hash: 'SHA-256' },
+    pwKey,
+    p * blockLen * 8
+  );
+  const B = new Uint8Array(bBits);
+
+  // Step 2: ROMix each block
+  for (let i = 0; i < p; i++) {
+    scryptSmix(B, i * blockLen, r, N);
+  }
+
+  // Step 3: DK = PBKDF2-SHA256(password, B, 1, dkLen)
+  const bKey = await subtle.importKey('raw', passwordBytes, 'PBKDF2', false, ['deriveBits']);
+  const dkBits = await subtle.deriveBits(
+    { name: 'PBKDF2', salt: B, iterations: 1, hash: 'SHA-256' },
+    bKey,
+    dkLen * 8
+  );
+  return new Uint8Array(dkBits);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// SECTION 3 — AES KEY WRAP / UNWRAP (RFC 3394)
+// Web Crypto has built-in AES-KW support — we use it directly.
+// ═══════════════════════════════════════════════════════════════
+
+async function aesKeyUnwrap(kekBytes, wrappedKeyBytes, algorithm) {
+  // Import KEK as AES-KW key
+  const kek = await crypto.subtle.importKey(
+    'raw', kekBytes,
+    { name: 'AES-KW' },
+    false, ['unwrapKey']
+  );
+  // Unwrap the target key
+  const unwrapped = await crypto.subtle.unwrapKey(
+    'raw',
+    wrappedKeyBytes,
+    kek,
+    'AES-KW',
+    { name: algorithm },
+    true,
+    algorithm === 'AES-CBC' ? ['encrypt', 'decrypt'] : ['sign', 'verify']
+  );
+  // Export the raw bytes
+  const exported = await crypto.subtle.exportKey('raw', unwrapped);
+  return new Uint8Array(exported);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// SECTION 4 — AES-CMAC (RFC 4493)
+// Used internally by AES-SIV for file name encryption.
+// Implemented using Web Crypto AES-CBC (IV=0) for CBC operations.
+// ═══════════════════════════════════════════════════════════════
+
+// Double a 128-bit value in GF(2^128) — for CMAC subkey generation
+function cmacDbl(b) {
+  const out = new Uint8Array(16);
+  let carry = 0;
+  for (let i = 15; i >= 0; i--) {
+    const x = (b[i] << 1) | carry;
+    carry = (b[i] & 0x80) ? 1 : 0;
+    out[i] = x & 0xff;
+  }
+  if (carry) out[15] ^= 0x87;  // XOR with Rb constant
+  return out;
+}
+
+// AES-ECB encrypt of a single 16-byte block using AES-CBC with IV=0
+async function aesEcbEncryptBlock(keyBytes, block16) {
+  const key = await crypto.subtle.importKey(
+    'raw', keyBytes, { name: 'AES-CBC' }, false, ['encrypt']
+  );
+  // AES-CBC with IV=0 on a single block:
+  // Output = PKCS7-padded CBC = 32 bytes.
+  // First 16 bytes = AES-ECB(key, block16 XOR 0) = AES-ECB(key, block16) ✓
+  const out = await crypto.subtle.encrypt(
+    { name: 'AES-CBC', iv: new Uint8Array(16) },
+    key,
+    block16
+  );
+  return new Uint8Array(out).slice(0, 16);
+}
+
+// AES-CBC encrypt using Web Crypto (returns only the actual ciphertext, not PKCS7 extra block)
+async function aesCbcEncrypt(keyBytes, iv, plaintext) {
+  // plaintext must be block-aligned (multiple of 16 bytes)
+  const key = await crypto.subtle.importKey(
+    'raw', keyBytes, { name: 'AES-CBC' }, false, ['encrypt']
+  );
+  const out = await crypto.subtle.encrypt({ name: 'AES-CBC', iv }, key, plaintext);
+  // AES-CBC with PKCS7 adds one extra block — strip it
+  return new Uint8Array(out).slice(0, plaintext.byteLength || plaintext.length);
+}
+
+async function aesCmac(keyBytes, message) {
+  // Step 1: Generate subkeys from L = AES(key, 0^128)
+  const L  = await aesEcbEncryptBlock(keyBytes, new Uint8Array(16));
+  const K1 = cmacDbl(L);
+  const K2 = cmacDbl(K1);
+
+  // Step 2: Prepare padded message with K1/K2 XOR on last block
+  let n, lastBlock;
+  if (message.length === 0) {
+    // Empty message: one padded block XOR K2
+    lastBlock = new Uint8Array(16);
+    lastBlock[0] = 0x80;
+    xorInPlace(lastBlock, K2);
+    n = 1;
+  } else {
+    n = Math.ceil(message.length / 16);
+    const complete = (message.length % 16 === 0);
+    lastBlock = new Uint8Array(16);
+    if (complete) {
+      lastBlock.set(message.slice((n-1)*16, n*16));
+      xorInPlace(lastBlock, K1);
+    } else {
+      const partial = message.slice((n-1)*16);
+      lastBlock.set(partial);
+      lastBlock[partial.length] = 0x80; // ISO/IEC 7816-4 padding
+      xorInPlace(lastBlock, K2);
+    }
+  }
+
+  // Build the full message for CBC
+  const full = new Uint8Array(n * 16);
+  if (n > 1) full.set(message.slice(0, (n-1)*16), 0);
+  full.set(lastBlock, (n-1)*16);
+
+  // AES-CBC encrypt with IV=0, take last 16 bytes
+  const cbcOut = await aesCbcEncrypt(keyBytes, new Uint8Array(16), full);
+  return cbcOut.slice((n-1)*16, n*16);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// SECTION 5 — AES-SIV (RFC 5297)
+// For Cryptomator v8 file name encryption.
+// Call convention: sivEncrypt(encKey, macKey, plaintext, ...associatedData)
+//   - macKey (mk) → K1 for S2V/CMAC
+//   - encKey (ek) → K2 for AES-CTR encryption
+// ═══════════════════════════════════════════════════════════════
+
+// S2V: Synthetic IV generation
+async function s2v(macKeyBytes, inputs) {
+  // inputs: array of Uint8Array (associatedData..., plaintext)
+  // The last element is the plaintext message.
+  let D = await aesCmac(macKeyBytes, new Uint8Array(0)); // CMAC(K, zero string)
+
+  for (let i = 0; i < inputs.length - 1; i++) {
+    D = cmacDbl(D);
+    const c = await aesCmac(macKeyBytes, inputs[i]);
+    xorInPlace(D, c);
+  }
+
+  const plaintext = inputs[inputs.length - 1];
+  let T;
+  if (plaintext.length >= 16) {
+    // T = plaintext XOR_end D (XOR last 16 bytes)
+    T = new Uint8Array(plaintext);
+    xorEnd(T, D);
+  } else {
+    // T = dbl(D) XOR pad(plaintext)
+    D = cmacDbl(D);
+    T = new Uint8Array(16);
+    T.set(plaintext);
+    T[plaintext.length] = 0x80;
+    xorInPlace(T, D);
+  }
+  return aesCmac(macKeyBytes, T);
+}
+
+// Prepare AES-CTR counter from SIV (zero bits 31 and 63)
+function sivToCounter(siv) {
+  const q = new Uint8Array(siv);
+  q[8]  &= 0x7f;  // zero bit 63 (MSB of byte 8)
+  q[12] &= 0x7f;  // zero bit 31 of lower 64 bits (MSB of byte 12)
+  return q;
+}
+
+async function aesCtrCrypt(keyBytes, counter, data) {
+  const key = await crypto.subtle.importKey(
+    'raw', keyBytes, { name: 'AES-CTR' }, false, ['encrypt', 'decrypt']
+  );
+  const out = await crypto.subtle.encrypt(
+    { name: 'AES-CTR', counter, length: 128 }, key, data
+  );
+  return new Uint8Array(out);
+}
+
+// SIV encrypt: returns SIV(16) || ciphertext
+async function sivEncrypt(encKeyBytes, macKeyBytes, plaintext, ...ads) {
+  const inputs = [...ads.map(a => (typeof a === 'string') ? enc.encode(a) : a), plaintext];
+  const siv = await s2v(macKeyBytes, inputs);
+  const counter = sivToCounter(siv);
+  const ciphertext = await aesCtrCrypt(encKeyBytes, counter, plaintext);
+  const out = new Uint8Array(16 + ciphertext.length);
+  out.set(siv, 0);
+  out.set(ciphertext, 16);
+  return out;
+}
+
+// SIV decrypt: input is SIV(16) || ciphertext
+async function sivDecrypt(encKeyBytes, macKeyBytes, ciphertextWithSiv, ...ads) {
+  if (ciphertextWithSiv.length < 16) throw new Error('Ciphertext too short');
+  const siv = ciphertextWithSiv.slice(0, 16);
+  const ciphertext = ciphertextWithSiv.slice(16);
+  const counter = sivToCounter(siv);
+  const plaintext = await aesCtrCrypt(encKeyBytes, counter, ciphertext);
+  // Verify
+  const inputs = [...ads.map(a => (typeof a === 'string') ? enc.encode(a) : a), plaintext];
+  const checkSiv = await s2v(macKeyBytes, inputs);
+  if (!bytesEqual(siv, checkSiv)) {
+    throw new Error('SIV authentication failed');
+  }
+  return plaintext;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// SECTION 6 — CRYPTOMATOR VAULT (Format v8)
+// ═══════════════════════════════════════════════════════════════
+
+let vault = {
+  files: {},          // path → FileEntry (raw file data from input)
+  encKeyBytes: null,  // Uint8Array 32
+  macKeyBytes: null,  // Uint8Array 32
+  name: '',
+  rootDirId: '',      // empty string = root
+  dirCache: {},       // dirId → hash
+  tree: null,
+};
+
+// Load and decrypt masterkey.cryptomator
+async function loadMasterkey(json, password) {
+  const mk = JSON.parse(json);
+  const salt     = b64decode(mk.scryptSalt);
+  const N        = mk.scryptCostParam;
+  const r        = mk.scryptBlockSize;
+  const p        = 1; // always 1 in Cryptomator
+  const dkLen    = 32;
+  // pepper = [] for standard Cryptomator desktop vaults
+
+  setStatus('Deriving key with scrypt (N=' + N + ', r=' + r + ')…');
+  setProgress(10);
+  const passwordBytes = enc.encode(password);
+  const kekBytes = await scrypt(passwordBytes, salt, N, r, p, dkLen);
+  setProgress(70);
+
+  // Unwrap encKey and macKey using AES-KW (RFC 3394)
+  // Note: Web Crypto AES-KW uses a fixed IV of 0xA6...A6 — same as RFC 3394
+  try {
+    const encKeyBytes = await aesKeyUnwrap(kekBytes, b64decode(mk.primaryMasterKey), 'AES-CBC');
+    const macKeyBytes = await aesKeyUnwrap(kekBytes, b64decode(mk.hmacMasterKey), 'AES-CBC');
+
+    // Verify version MAC: HMAC-SHA256(macKey, version_as_4_byte_BE) == versionMac
+    setProgress(85);
+    const versionBytes = new Uint8Array(4);
+    const view = new DataView(versionBytes.buffer);
+    view.setUint32(0, mk.version, false); // big-endian
+    const hmacKey = await crypto.subtle.importKey(
+      'raw', macKeyBytes, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']
+    );
+    const sig = await crypto.subtle.sign('HMAC', hmacKey, versionBytes);
+    const expected = b64decode(mk.versionMac);
+    if (!bytesEqual(new Uint8Array(sig), expected)) {
+      throw new Error('Version MAC mismatch — wrong password or corrupted vault');
+    }
+
+    setProgress(100);
+    return { encKeyBytes, macKeyBytes };
+  } catch (e) {
+    if (e.name === 'OperationError' || e.message.includes('unwrap')) {
+      throw new Error('Wrong password');
+    }
+    throw e;
+  }
+}
+
+// Hash a directory ID: BASE32(SHA1(AES-SIV(encKey, macKey, dirId)))
+async function hashDirId(dirId, encKeyBytes, macKeyBytes) {
+  if (vault.dirCache[dirId] !== undefined) return vault.dirCache[dirId];
+  const dirIdBytes = enc.encode(dirId);
+  // Encrypt with no associated data
+  const encrypted = await sivEncrypt(encKeyBytes, macKeyBytes, dirIdBytes);
+  const hashBuf = await crypto.subtle.digest('SHA-1', encrypted);
+  const hash = base32encode(new Uint8Array(hashBuf));
+  vault.dirCache[dirId] = hash;
+  return hash;
+}
+
+// Decrypt a file/dir name ciphertext (base64url, no extension)
+async function decryptFilename(b64urlName, dirIdBytes, encKeyBytes, macKeyBytes) {
+  const ciphertext = b64urlDecode(b64urlName);
+  const plainBytes = await sivDecrypt(encKeyBytes, macKeyBytes, ciphertext, dirIdBytes);
+  return dec.decode(plainBytes);
+}
+
+// Decrypt Cryptomator v2 file content (header + chunks)
+// Header: 12 nonce + 40 encrypted_payload + 16 GCM_tag = 68 bytes
+// Each chunk: 12 nonce + up to 32768 data + 16 GCM_tag = up to 32796 bytes
+// AAD per chunk = chunkNumber(8 bytes BE) + headerNonce(12 bytes)
+async function decryptFileContent(fileBytes, encKeyBytes) {
+  const HEADER_SIZE = 68;
+  const NONCE_LEN   = 12;
+  const TAG_LEN     = 16;
+  const CHUNK_SIZE  = 12 + 32768 + 16; // 32796
+
+  if (fileBytes.length < HEADER_SIZE) throw new Error('File too small to be a valid vault file');
+
+  // Import enc key for AES-GCM
+  const aesKey = await crypto.subtle.importKey(
+    'raw', encKeyBytes, { name: 'AES-GCM' }, false, ['decrypt']
+  );
+
+  // Decrypt header
+  const headerNonce   = fileBytes.slice(0, NONCE_LEN);
+  const headerPayload = fileBytes.slice(NONCE_LEN, HEADER_SIZE); // 40 ciphertext + 16 tag
+
+  let contentKeyBytes;
+  try {
+    const headerPlain = await crypto.subtle.decrypt(
+      { name: 'AES-GCM', iv: headerNonce, tagLength: 128 },
+      aesKey,
+      headerPayload
+    );
+    // headerPlain = 8 bytes reserved + 32 bytes contentKey
+    contentKeyBytes = new Uint8Array(headerPlain).slice(8, 40);
+  } catch {
+    throw new Error('Header authentication failed — file may be corrupted');
+  }
+
+  const contentKey = await crypto.subtle.importKey(
+    'raw', contentKeyBytes, { name: 'AES-GCM' }, false, ['decrypt']
+  );
+
+  // Decrypt chunks
+  const chunks = [];
+  let offset = HEADER_SIZE;
+  let chunkNum = 0n; // BigInt for 64-bit chunk counter
+
+  while (offset < fileBytes.length) {
+    const remaining = fileBytes.length - offset;
+    const chunkBytes = fileBytes.slice(offset, offset + CHUNK_SIZE);
+    const chunkNonce    = chunkBytes.slice(0, NONCE_LEN);
+    const chunkCipher   = chunkBytes.slice(NONCE_LEN);
+
+    // AAD = chunkNumber (8 bytes big-endian) + headerNonce (12 bytes)
+    const aad = new Uint8Array(20);
+    const dv = new DataView(aad.buffer);
+    // Write 8-byte big-endian chunk number
+    dv.setBigUint64(0, chunkNum, false);
+    aad.set(headerNonce, 8);
+
+    let chunkPlain;
+    try {
+      chunkPlain = await crypto.subtle.decrypt(
+        { name: 'AES-GCM', iv: chunkNonce, tagLength: 128, additionalData: aad },
+        contentKey,
+        chunkCipher
+      );
+    } catch {
+      throw new Error(`Chunk ${chunkNum} authentication failed`);
+    }
+    chunks.push(new Uint8Array(chunkPlain));
+    offset += chunkBytes.length;
+    chunkNum++;
+  }
+
+  // Concatenate all chunks
+  const totalLen = chunks.reduce((s, c) => s + c.length, 0);
+  const result = new Uint8Array(totalLen);
+  let pos = 0;
+  for (const chunk of chunks) { result.set(chunk, pos); pos += chunk.length; }
+  return result;
+}
+
+// Encrypt file content — produces Cryptomator v2 format
+async function encryptFileContent(data, encKeyBytes) {
+  const NONCE_LEN  = 12;
+  const CHUNK_SIZE = 32768;
+  const TAG_LEN    = 16;
+
+  // Generate header nonce and content key
+  const headerNonce   = crypto.getRandomValues(new Uint8Array(NONCE_LEN));
+  const contentKeyRaw = crypto.getRandomValues(new Uint8Array(32));
+
+  const aesKey = await crypto.subtle.importKey(
+    'raw', encKeyBytes, { name: 'AES-GCM' }, false, ['encrypt']
+  );
+
+  // Encrypt header payload: 8 bytes reserved (0) + 32 bytes content key
+  const payload = new Uint8Array(40);
+  payload.set(contentKeyRaw, 8);
+  const headerCipher = await crypto.subtle.encrypt(
+    { name: 'AES-GCM', iv: headerNonce, tagLength: 128 },
+    aesKey,
+    payload
+  );
+
+  const contentKey = await crypto.subtle.importKey(
+    'raw', contentKeyRaw, { name: 'AES-GCM' }, false, ['encrypt']
+  );
+
+  // Encrypt chunks
+  const chunkParts = [];
+  let offset = 0, chunkNum = 0n;
+  do {
+    const chunk = data.slice(offset, offset + CHUNK_SIZE);
+    const chunkNonce = crypto.getRandomValues(new Uint8Array(NONCE_LEN));
+    const aad = new Uint8Array(20);
+    new DataView(aad.buffer).setBigUint64(0, chunkNum, false);
+    aad.set(headerNonce, 8);
+    const encrypted = await crypto.subtle.encrypt(
+      { name: 'AES-GCM', iv: chunkNonce, tagLength: 128, additionalData: aad },
+      contentKey,
+      chunk
+    );
+    const part = new Uint8Array(NONCE_LEN + encrypted.byteLength);
+    part.set(chunkNonce, 0);
+    part.set(new Uint8Array(encrypted), NONCE_LEN);
+    chunkParts.push(part);
+    offset += CHUNK_SIZE;
+    chunkNum++;
+  } while (offset < data.length);
+
+  // Assemble: header(68) + chunks
+  const headerBytes = new Uint8Array(NONCE_LEN + headerCipher.byteLength);
+  headerBytes.set(headerNonce, 0);
+  headerBytes.set(new Uint8Array(headerCipher), NONCE_LEN);
+
+  const totalSize = headerBytes.length + chunkParts.reduce((s, c) => s + c.length, 0);
+  const out = new Uint8Array(totalSize);
+  let pos = 0;
+  out.set(headerBytes, pos); pos += headerBytes.length;
+  for (const cp of chunkParts) { out.set(cp, pos); pos += cp.length; }
+  return out;
+}
+
+// Generate masterkey.cryptomator JSON
+async function generateMasterkey(password, N = 32768, r = 8) {
+  const salt         = crypto.getRandomValues(new Uint8Array(8));
+  const encKeyRaw    = crypto.getRandomValues(new Uint8Array(32));
+  const macKeyRaw    = crypto.getRandomValues(new Uint8Array(32));
+  const passwordBytes = enc.encode(password);
+
+  const kekBytes = await scrypt(passwordBytes, salt, N, r, 1, 32);
+
+  // Wrap keys using AES-KW (RFC 3394)
+  const kek = await crypto.subtle.importKey('raw', kekBytes, { name: 'AES-KW' }, false, ['wrapKey']);
+
+  const encCk = await crypto.subtle.importKey('raw', encKeyRaw, { name: 'AES-CBC' }, true, ['encrypt']);
+  const macCk = await crypto.subtle.importKey('raw', macKeyRaw, { name: 'AES-CBC' }, true, ['encrypt']);
+
+  const wrappedEnc = new Uint8Array(await crypto.subtle.wrapKey('raw', encCk, kek, 'AES-KW'));
+  const wrappedMac = new Uint8Array(await crypto.subtle.wrapKey('raw', macCk, kek, 'AES-KW'));
+
+  // Version MAC: HMAC-SHA256(macKey, version=999 as 4-byte BE)
+  const versionBytes = new Uint8Array(4);
+  new DataView(versionBytes.buffer).setUint32(0, 999, false);
+  const hmacKey = await crypto.subtle.importKey(
+    'raw', macKeyRaw, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']
+  );
+  const versionMac = new Uint8Array(await crypto.subtle.sign('HMAC', hmacKey, versionBytes));
+
+  return {
+    masterkeyJson: JSON.stringify({
+      version: 999,
+      scryptSalt: b64encode(salt),
+      scryptCostParam: N,
+      scryptBlockSize: r,
+      primaryMasterKey: b64encode(wrappedEnc),
+      hmacMasterKey: b64encode(wrappedMac),
+      versionMac: b64encode(versionMac)
+    }, null, 2),
+    vaultJson: JSON.stringify({ vaultFormat: 8, shorteningThreshold: 220 }, null, 2),
+    encKeyBytes: encKeyRaw,
+    macKeyBytes: macKeyRaw
+  };
+}
+
+// ═══════════════════════════════════════════════════════════════
+// SECTION 7 — VAULT DIRECTORY TRAVERSAL
+// Parse the d/ directory structure, decrypt file names
+// ═══════════════════════════════════════════════════════════════
+
+// Build a virtual tree from the file list
+async function buildVaultTree(files, encKeyBytes, macKeyBytes) {
+  // files: array of {path: string, data: Uint8Array}
+  // Path uses '/' as separator
+
+  // Find vault.cryptomator and masterkey.cryptomator (already processed)
+  const byPath = {};
+  for (const f of files) byPath[f.path] = f;
+
+  // Build tree starting from root (dirId = '')
+  async function readDir(dirId, depth) {
+    if (depth > 30) return []; // safety limit
+    const hash  = await hashDirId(dirId, encKeyBytes, macKeyBytes);
+    const prefix = hash.slice(0, 2);
+    const rest   = hash.slice(2);
+    const dirPrefix = 'd/' + prefix + '/' + rest + '/';
+
+    const nodes = [];
+    const dirIdBytes = enc.encode(dirId);
+
+    // Find all entries under this directory
+    const seen = new Set();
+    for (const path of Object.keys(byPath)) {
+      if (!path.startsWith(dirPrefix)) continue;
+      const rel = path.slice(dirPrefix.length);
+      // rel is like "ENCRYPTEDNAME.c9r" or "ENCRYPTEDNAME.c9r/dir.c9r"
+      const parts = rel.split('/');
+      if (parts.length < 1 || parts[0] === '') continue;
+      const entryName = parts[0];
+      if (seen.has(entryName)) continue;
+      seen.add(entryName);
+
+      // Determine if this is a dir or file
+      const dirFile  = dirPrefix + entryName + '/dir.c9r';
+      const isDir    = !!byPath[dirFile];
+      const cName    = entryName.replace(/\.c9r$/, '').replace(/\.c9s$/, '');
+
+      let clearName;
+      try {
+        clearName = await decryptFilename(cName, dirIdBytes, encKeyBytes, macKeyBytes);
+      } catch {
+        clearName = '[encrypted: ' + cName.slice(0, 8) + '…]';
+      }
+
+      if (isDir) {
+        // Read subdirectory ID from dir.c9r
+        const dirFileData = byPath[dirFile];
+        let childDirId = '';
+        if (dirFileData) {
+          childDirId = dec.decode(dirFileData.data);
+        }
+        const children = await readDir(childDirId, depth + 1);
+        nodes.push({ type: 'dir', name: clearName, dirId: childDirId, children, path: dirPrefix + entryName });
+      } else {
+        // Regular file — find the contents file
+        const contentsPath = dirPrefix + entryName + '/contents.c9r';
+        const directPath   = path; // might be the file itself if flat
+        nodes.push({
+          type: 'file',
+          name: clearName,
+          path: byPath[contentsPath] ? contentsPath : path,
+          ciphertextPath: path
+        });
+      }
+    }
+
+    // Sort: dirs first, then files alphabetically
+    nodes.sort((a, b) => {
+      if (a.type !== b.type) return a.type === 'dir' ? -1 : 1;
+      return a.name.localeCompare(b.name);
+    });
+    return nodes;
+  }
+
+  return readDir('', 0);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// SECTION 8 — FILE I/O  (works on both Desktop and iPhone Safari)
+// ═══════════════════════════════════════════════════════════════
+
+let vaultFiles = [];  // Array of {path, data: Uint8Array}
+let fsaDirectory = null; // FileSystemDirectoryHandle if available
+
+// Open vault — tries File System Access API, falls back to input[webkitdirectory]
+async function openVault() {
+  vaultFiles = [];
+  fsaDirectory = null;
+
+  // Try File System Access API (Chrome/Edge desktop)
+  if (window.showDirectoryPicker) {
+    try {
+      const dir = await window.showDirectoryPicker({ mode: 'readwrite' });
+      fsaDirectory = dir;
+      await readFsaDirectory(dir, '', vaultFiles);
+      await processVaultFiles();
+      return;
+    } catch (e) {
+      if (e.name !== 'AbortError') console.warn('FSA failed:', e);
+      if (e.name === 'AbortError') return;
+    }
+  }
+
+  // iOS Safari / Firefox fallback: webkitdirectory input
+  const input = document.getElementById('vaultFolderInput');
+  input.value = '';
+  input.onchange = async () => {
+    vaultFiles = [];
+    const files = Array.from(input.files);
+    for (const file of files) {
+      const data = new Uint8Array(await file.arrayBuffer());
+      // webkitRelativePath = "vaultname/d/AB/CD.../name.c9r"
+      let p = file.webkitRelativePath || file.name;
+      // Normalize: strip leading folder name if present
+      const slash = p.indexOf('/');
+      if (slash !== -1) p = p.slice(slash + 1);
+      vaultFiles.push({ path: p, data });
+    }
+    if (vaultFiles.length === 0) { toast('No files selected', 'err'); return; }
+    await processVaultFiles();
+  };
+  input.click();
+}
+
+async function readFsaDirectory(dirHandle, prefix, out) {
+  for await (const [name, handle] of dirHandle.entries()) {
+    const path = prefix ? prefix + '/' + name : name;
+    if (handle.kind === 'file') {
+      const file = await handle.getFile();
+      const data = new Uint8Array(await file.arrayBuffer());
+      out.push({ path, data, handle });
+    } else if (handle.kind === 'directory') {
+      await readFsaDirectory(handle, path, out);
+    }
+  }
+}
+
+async function processVaultFiles() {
+  // Find masterkey.cryptomator
+  const mkFile = vaultFiles.find(f => f.path === 'masterkey.cryptomator' || f.path.endsWith('/masterkey.cryptomator'));
+  if (!mkFile) {
+    toast('masterkey.cryptomator not found. Is this a valid vault?', 'err');
+    return;
+  }
+  const mkJson = dec.decode(mkFile.data);
+
+  // Show vault name (from parent folder)
+  const parts = mkFile.path.split('/');
+  vault.name = parts.length > 1 ? parts[parts.length - 2] : 'Vault';
+
+  // Show password modal
+  showPwModal();
+  pendingMkJson = mkJson;
+}
+
+let pendingMkJson = null;
+let selectedNode = null;
+let currentPath = []; // breadcrumb path
+
+// ═══════════════════════════════════════════════════════════════
+// SECTION 9 — UI LOGIC
+// ═══════════════════════════════════════════════════════════════
+
+function showPwModal() {
+  const m = document.getElementById('pwModal');
+  m.classList.remove('hidden');
+  document.getElementById('pwInput').value = '';
+  document.getElementById('pwError').style.display = 'none';
+  document.getElementById('pwProgress').style.display = 'none';
+  document.getElementById('pwStatus').textContent = '';
+  document.getElementById('pwInput').focus();
+}
+
+function closePwModal() {
+  document.getElementById('pwModal').classList.add('hidden');
+}
+
+document.getElementById('pwInput')?.addEventListener('keydown', e => {
+  if (e.key === 'Enter') unlockVault();
+});
+
+function setStatus(msg) {
+  document.getElementById('pwStatus').textContent = msg;
+}
+function setProgress(pct) {
+  document.getElementById('pwProgress').style.display = '';
+  document.getElementById('pwFill').style.width = pct + '%';
+}
+
+async function unlockVault() {
+  const password = document.getElementById('pwInput').value;
+  if (!password) return;
+
+  const btn = document.getElementById('btnUnlock');
+  btn.disabled = true;
+  document.getElementById('pwError').style.display = 'none';
+
+  try {
+    const { encKeyBytes, macKeyBytes } = await loadMasterkey(pendingMkJson, password);
+    vault.encKeyBytes = encKeyBytes;
+    vault.macKeyBytes = macKeyBytes;
+
+    setStatus('Building file tree…');
+    setProgress(90);
+    const tree = await buildVaultTree(vaultFiles, encKeyBytes, macKeyBytes);
+    vault.tree = tree;
+
+    closePwModal();
+    showWorkspace(tree);
+  } catch (e) {
+    document.getElementById('pwError').textContent = e.message || 'Wrong password.';
+    document.getElementById('pwError').style.display = 'block';
+    document.getElementById('pwProgress').style.display = 'none';
+    document.getElementById('pwStatus').textContent = '';
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+function showWorkspace(tree) {
+  document.getElementById('welcome').style.display = 'none';
+  const ws = document.getElementById('workspace');
+  ws.style.display = 'flex';
+  document.getElementById('vaultName').textContent = vault.name || 'Vault';
+
+  currentPath = [];
+  renderBreadcrumb();
+  renderTree(tree, document.getElementById('fileTree'), 0);
+
+  const count = countFiles(tree);
+  document.getElementById('fileCount').textContent = count + ' item' + (count === 1 ? '' : 's');
+}
+
+function countFiles(nodes) {
+  let n = 0;
+  for (const node of nodes) {
+    n++;
+    if (node.children) n += countFiles(node.children);
+  }
+  return n;
+}
+
+function closeVault() {
+  vault = { files: {}, encKeyBytes: null, macKeyBytes: null, name: '', rootDirId: '', dirCache: {}, tree: null };
+  vaultFiles = [];
+  selectedNode = null;
+  document.getElementById('welcome').style.display = 'flex';
+  document.getElementById('workspace').style.display = 'none';
+}
+
+function renderTree(nodes, container, depth) {
+  container.innerHTML = '';
+  for (const node of nodes) {
+    const el = document.createElement('div');
+    const icon = node.type === 'dir' ? '📁' : fileIcon(node.name);
+    el.innerHTML = `
+      <div class="tree-node" style="padding-left:${12 + depth*14}px" onclick="nodeClick(this, event)">
+        ${node.type === 'dir' ? '<span class="arrow">▶</span>' : '<span style="width:14px;display:inline-block"></span>'}
+        <span class="icon">${icon}</span>
+        <span class="name">${escHtml(node.name)}</span>
+      </div>
+    `;
+    el._node = node;
+    el.querySelector('.tree-node')._node = node;
+    if (node.type === 'dir' && node.children) {
+      const childContainer = document.createElement('div');
+      childContainer.className = 'tree-children';
+      renderTree(node.children, childContainer, depth + 1);
+      el.appendChild(childContainer);
+    }
+    container.appendChild(el);
+  }
+}
+
+function nodeClick(el, event) {
+  event.stopPropagation();
+  const node = el._node;
+  if (!node) return;
+
+  if (node.type === 'dir') {
+    el.classList.toggle('open');
+    const children = el.parentElement.querySelector('.tree-children');
+    if (children) children.classList.toggle('open');
+  } else {
+    // Select file
+    document.querySelectorAll('.tree-node.selected').forEach(e => e.classList.remove('selected'));
+    el.classList.add('selected');
+    selectedNode = node;
+    showFilePanel(node);
+  }
+}
+
+function fileIcon(name) {
+  const ext = (name.split('.').pop() || '').toLowerCase();
+  const map = {
+    pdf: '📕', png: '🖼', jpg: '🖼', jpeg: '🖼', gif: '🖼', webp: '🖼', svg: '🖼',
+    mp4: '🎬', mov: '🎬', avi: '🎬', mkv: '🎬',
+    mp3: '🎵', wav: '🎵', ogg: '🎵', flac: '🎵',
+    zip: '📦', gz: '📦', tar: '📦', rar: '📦',
+    txt: '📝', md: '📝', rtf: '📝',
+    js: '📋', ts: '📋', py: '📋', json: '📋', html: '📋', css: '📋',
+    doc: '📄', docx: '📄', xls: '📊', xlsx: '📊', ppt: '📊',
+  };
+  return map[ext] || '📄';
+}
+
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+async function showFilePanel(node) {
+  const empty = document.getElementById('fileviewEmpty');
+  const content = document.getElementById('fileviewContent');
+  empty.style.display = 'none';
+  content.style.display = 'flex';
+
+  document.getElementById('selectedFileName').textContent = node.name;
+  document.getElementById('fileMeta').innerHTML = '<div class="meta-chip">Encrypted on disk</div>';
+  document.getElementById('filePreview').innerHTML = '<div style="padding:16px;color:var(--text2);font-size:13px">Loading…</div>';
+
+  // Find the file in vaultFiles
+  const vf = vaultFiles.find(f => f.path === node.path || f.path === node.ciphertextPath);
+  if (!vf) {
+    document.getElementById('filePreview').innerHTML = '<div style="padding:16px;color:var(--red)">File data not found</div>';
+    return;
+  }
+
+  let decrypted;
+  try {
+    decrypted = await decryptFileContent(vf.data, vault.encKeyBytes);
+  } catch (e) {
+    document.getElementById('filePreview').innerHTML = `<div style="padding:16px;color:var(--red)">${escHtml(e.message)}</div>`;
+    return;
+  }
+
+  // Update meta
+  document.getElementById('fileMeta').innerHTML = `
+    <div class="meta-chip">${formatSize(decrypted.length)}</div>
+    <div class="meta-chip">${node.name.split('.').pop().toUpperCase() || 'FILE'}</div>
+    <div class="meta-chip" style="color:var(--green)">✓ Authenticated</div>
+  `;
+
+  // Preview
+  const ext = (node.name.split('.').pop() || '').toLowerCase();
+  const imgExts = ['png','jpg','jpeg','gif','webp','svg','bmp'];
+  const textExts = ['txt','md','json','js','ts','css','html','xml','csv','sh','py','rb','go','rs'];
+
+  if (imgExts.includes(ext)) {
+    const blob = new Blob([decrypted]);
+    const url = URL.createObjectURL(blob);
+    document.getElementById('filePreview').innerHTML = `
+      <div class="image-preview"><img src="${url}" alt="${escHtml(node.name)}"></div>`;
+  } else if (textExts.includes(ext)) {
+    const text = dec.decode(decrypted);
+    document.getElementById('filePreview').innerHTML =
+      `<div class="text-preview">${escHtml(text.slice(0, 100000))}</div>`;
+  } else {
+    document.getElementById('filePreview').innerHTML =
+      `<div style="padding:24px;text-align:center;color:var(--text2)">
+         <div style="font-size:48px;margin-bottom:12px">${fileIcon(node.name)}</div>
+         <div style="margin-bottom:16px">${formatSize(decrypted.length)} — binary file</div>
+         <button class="btn primary" onclick="downloadSelected()">⬇ Download decrypted file</button>
+       </div>`;
+  }
+
+  // Store decrypted for download
+  node._decrypted = decrypted;
+}
+
+async function downloadSelected() {
+  if (!selectedNode) return;
+  let data = selectedNode._decrypted;
+  if (!data) {
+    const vf = vaultFiles.find(f => f.path === selectedNode.path || f.path === selectedNode.ciphertextPath);
+    if (!vf) { toast('File not found', 'err'); return; }
+    data = await decryptFileContent(vf.data, vault.encKeyBytes);
+  }
+  const blob = new Blob([data]);
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = selectedNode.name;
+  a.click();
+  URL.revokeObjectURL(url);
+  toast('Downloaded: ' + selectedNode.name, 'ok');
+}
+
+function deleteSelected() {
+  if (!selectedNode) return;
+  toast('Delete not implemented in this version', 'err');
+}
+
+function renderBreadcrumb() {
+  const el = document.getElementById('breadcrumb');
+  el.innerHTML = '<span onclick="goHome()">🏠 Vault</span>';
+  for (let i = 0; i < currentPath.length; i++) {
+    const idx = i;
+    el.innerHTML += '<span class="bc-sep">/</span><span onclick="goBreadcrumb(' + i + ')">' + escHtml(currentPath[i].name) + '</span>';
+  }
+}
+
+function goHome() { currentPath = []; renderBreadcrumb(); }
+function goBreadcrumb(idx) { currentPath = currentPath.slice(0, idx + 1); renderBreadcrumb(); }
+
+// ── Upload / encrypt ──
+function showUpload() { document.getElementById('uploadModal').classList.remove('hidden'); }
+function closeUpload() { document.getElementById('uploadModal').classList.add('hidden'); }
+
+document.getElementById('uploadDropzone')?.addEventListener('click', () => {
+  document.getElementById('uploadFileInput').click();
+});
+document.getElementById('uploadFileInput')?.addEventListener('change', handleUploadFile);
+
+async function handleUploadFile(e) {
+  const files = Array.from(e.target.files);
+  if (!files.length) return;
+  for (const file of files) {
+    const data = new Uint8Array(await file.arrayBuffer());
+    const encrypted = await encryptFileContent(data, vault.encKeyBytes);
+    const blob = new Blob([encrypted]);
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = file.name + '.c9r'; a.click();
+    URL.revokeObjectURL(url);
+    toast('Encrypted: ' + file.name + '.c9r', 'ok');
+  }
+  closeUpload();
+}
+
+// ── New Vault ──
+let nvPassword = '';
+let nvLocationHandle = null;
+
+function showNewVault() { document.getElementById('newVaultModal').classList.remove('hidden'); }
+function closeNewVault() { document.getElementById('newVaultModal').classList.add('hidden'); }
+
+function nvStep2() {
+  const p1 = document.getElementById('nvPw1').value;
+  const p2 = document.getElementById('nvPw2').value;
+  if (!p1) { document.getElementById('nvError').textContent = 'Enter a password'; document.getElementById('nvError').style.display = 'block'; return; }
+  if (p1 !== p2) { document.getElementById('nvError').textContent = 'Passwords do not match'; document.getElementById('nvError').style.display = 'block'; return; }
+  nvPassword = p1;
+  document.getElementById('nv-step1').style.display = 'none';
+  document.getElementById('nv-step2').style.display = '';
+  document.getElementById('ws1').className = 'wizard-step done';
+  document.getElementById('ws2').className = 'wizard-step active';
+}
+
+function nvBack() {
+  document.getElementById('nv-step2').style.display = 'none';
+  document.getElementById('nv-step1').style.display = '';
+  document.getElementById('ws2').className = 'wizard-step';
+  document.getElementById('ws1').className = 'wizard-step active';
+}
+
+async function nvPickLocation() {
+  if (window.showDirectoryPicker) {
+    try {
+      nvLocationHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
+      document.getElementById('nvLocDesc').textContent = '📁 ' + nvLocationHandle.name;
+    } catch {}
+  } else {
+    document.getElementById('nvLocDesc').textContent = 'Vault files will be downloaded';
+  }
+}
+
+async function nvCreate() {
+  const { masterkeyJson, vaultJson, encKeyBytes, macKeyBytes } = await generateMasterkey(nvPassword);
+  vault.encKeyBytes = encKeyBytes;
+  vault.macKeyBytes = macKeyBytes;
+  vault.name = 'MyVault';
+
+  // Create root directory id = '' → hash → d/XX/XXXXX...
+  const rootHash = await hashDirId('', encKeyBytes, macKeyBytes);
+  const rootPrefix = rootHash.slice(0, 2);
+  const rootRest   = rootHash.slice(2);
+
+  const filesToWrite = [
+    { path: 'vault.cryptomator', data: enc.encode(vaultJson) },
+    { path: 'masterkey.cryptomator', data: enc.encode(masterkeyJson) },
+    { path: 'd/' + rootPrefix + '/' + rootRest + '/', data: null, isDir: true },
+  ];
+
+  if (nvLocationHandle) {
+    // Write via FSA
+    for (const f of filesToWrite) {
+      if (f.isDir) {
+        await nvMakeDir(nvLocationHandle, f.path.split('/').filter(Boolean));
+      } else {
+        await nvWriteFile(nvLocationHandle, f.path, f.data);
+      }
+    }
+    toast('Vault created in ' + nvLocationHandle.name, 'ok');
+  } else {
+    // Download as zip (simple: download individual files)
+    downloadBlob(new Blob([enc.encode(masterkeyJson)]), 'masterkey.cryptomator');
+    downloadBlob(new Blob([enc.encode(vaultJson)]), 'vault.cryptomator');
+    toast('Downloaded vault files. Place them in a folder.', 'ok');
+  }
+
+  document.getElementById('nv-step2').style.display = 'none';
+  document.getElementById('nv-step3').style.display = '';
+  document.getElementById('ws2').className = 'wizard-step done';
+  document.getElementById('ws3').className = 'wizard-step active';
+}
+
+async function nvMakeDir(root, parts) {
+  let cur = root;
+  for (const part of parts) cur = await cur.getDirectoryHandle(part, { create: true });
+  return cur;
+}
+
+async function nvWriteFile(root, path, data) {
+  const parts = path.split('/');
+  const filename = parts.pop();
+  let dir = root;
+  for (const part of parts) {
+    if (part) dir = await dir.getDirectoryHandle(part, { create: true });
+  }
+  const fh = await dir.getFileHandle(filename, { create: true });
+  const ws = await fh.createWritable();
+  await ws.write(data);
+  await ws.close();
+}
+
+function downloadBlob(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = filename; a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ── Proton Drive ──
+function showProtonConnect() { document.getElementById('pdModal').classList.remove('hidden'); }
+function closePdModal() { document.getElementById('pdModal').classList.add('hidden'); }
+function showPdToken() { toast('API token mode coming in next version', 'err'); }
+
+// ── Toast ──
+let toastTimer;
+function toast(msg, type = '') {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'show' + (type ? ' ' + type : '');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { el.className = ''; }, 3000);
+}
+
+// ── Drag & drop on upload zone ──
+const uDz = document.getElementById('uploadDropzone');
+uDz?.addEventListener('dragover', e => { e.preventDefault(); uDz.classList.add('drag'); });
+uDz?.addEventListener('dragleave', () => uDz.classList.remove('drag'));
+uDz?.addEventListener('drop', async e => {
+  e.preventDefault(); uDz.classList.remove('drag');
+  const files = Array.from(e.dataTransfer.files);
+  if (!files.length) return;
+  for (const file of files) {
+    const data = new Uint8Array(await file.arrayBuffer());
+    const encrypted = await encryptFileContent(data, vault.encKeyBytes);
+    downloadBlob(new Blob([encrypted]), file.name + '.c9r');
+  }
+  closeUpload();
+  toast('File(s) encrypted and downloaded', 'ok');
+});
+
+</script>
+</body>
+</html>
