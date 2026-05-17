@@ -597,7 +597,7 @@ class Browser:
     def _upload_menu(self):
         _clear()
         _header('Upload', self.cwd)
-        print(col('  1  ', BOLD, CYAN) + 'File(s)         ' + col('(navigate & pick one or many)', DIM))
+        print(col('  1  ', BOLD, CYAN) + 'File(s)         ' + col('(1,2,3 & all)', DIM))
         print(col('  2  ', BOLD, CYAN) + 'Entire folder   ' + col('(recursive)', DIM))
         print(col('  0  ', DIM)        + 'Cancel')
         print()
@@ -663,10 +663,6 @@ class Browser:
             print(col(f'  {a_path:<3}', BOLD, YELLOW) + 'Type path')
             print(col('  0  ', BOLD, RED) + 'Cancel')
             print()
-
-            if raw_files:
-                print(col('  File number to upload one  •  1,3,5 or all for multiple', DIM))
-                print()
 
             ch = _ask()
             if not ch or ch == '0':
@@ -1303,7 +1299,7 @@ class Browser:
 
     def _do_delete_dir(self, vpath: str, name: str):
         print()
-        _warn(f"Delete '{name}/' and ALL its contents? This cannot be undone.")
+        _warn(f"Delete '{name}/' and ALL its contents?")
         print()
         confirm = _ask('Type folder name to confirm: ')
         if confirm != name:
@@ -1440,8 +1436,8 @@ class Menu:
                 if vaults else 'no vaults yet'
             )
             _header(f'pymator  v{__version__}', vault_hint)
-            print(col('  1  ', BOLD, CYAN)   + 'Open vault')
-            print(col('  2  ', BOLD, CYAN)   + 'Create vault')
+            print(col('  1  ', BOLD, CYAN)   + 'Open')
+            print(col('  2  ', BOLD, CYAN)   + 'Create')
             print(col('  3  ', BOLD, CYAN)   + 'Manage vault')
             print(col('  4  ', BOLD, CYAN)   + 'Help')
             print(col('  0  ', BOLD, YELLOW) + 'Exit')
@@ -1465,7 +1461,7 @@ class Menu:
             _header('Open Vault')
             vaults = self._get_vaults()
             if not vaults:
-                _warn('No vaults found. Create one first (option 2).')
+                _warn('No vaults found.')
                 _pause()
                 return
             for i, (name, _) in enumerate(vaults, 1):
@@ -1725,7 +1721,7 @@ class Menu:
 
     def _delete_vault(self, name: str, vault_dir: str) -> bool:
         print()
-        _warn(f"Delete '{name}'? This is permanent and irreversible.")
+        _warn(f"Delete '{name}'? irreversible.")
         pw = _ask_password(f'Password [{name}]: ')
         if not pw:
             _warn('Cancelled.')
@@ -1764,9 +1760,10 @@ class Menu:
             ('Vault browser', [
                 ('Number',         'Select folder to open, or file'),
                 ('n',              'New folder at current location'),
-                ('u',              'Upload file(s) or folder & encrypt'),
-                ('g',              'Download file (get) & decrypt'),
-                ('m',              'Move or rename a file or folder'),
+                ('u',              'Upload & encrypt'),
+                ('1,3,5 & all',    'File number to upload one'),
+                ('g',              'Download & decrypt'),
+                ('m',              'Move or rename'),
                 ('/',              'Search recursively by name'),
                 ('x',              'Delete a file or folder'),
                 ('..',             'Go up to parent directory'),
@@ -1780,7 +1777,7 @@ class Menu:
                 ('Delete vault',    'Requires password + name'),
             ]),
             ('Format', [
-                ('Cryptomator v8', '~Compatible'),
+                ('Cryptomator', 'v8'),
                 ('Location',       '~/pymator/'),
             ]),
         ]
